@@ -24,6 +24,8 @@ or
         return;
     }
     window.__AUTO_RUN_FROM_URL_INITED__ = true;
+    const JLITE_ORIGIN = 'https://philipontheroof.github.io';
+
     function sleep(ms) {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
@@ -209,15 +211,46 @@ or
 
     async function init() {
         try {
-            const code = await getCodeFromUrlParams();
-            if (!code) return; // Nothing to do
-            console.log('[auto-run-from-url] code detected from URL params');
-
             const app = await waitForJupyterApp();
-            const panel = await createNotebookWithCode(app, code);
-            console.log('[auto-run-from-url] notebook created');
-            await runAllCells(app);
-            window.__AUTO_RUN_FROM_URL_DONE__ = true;
+
+            // Signal readiness to opener for postMessage channel (Method A)
+            try {
+                if (window.opener && typeof window.opener.postMessage === 'function') {
+                    window.opener.postMessage({ type: 'ready' }, JLITE_ORIGIN);
+                    // Also broadcast using *; parent will filter by origin
+                    window.opener.postMessage({ type: 'ready' }, '*');
+                }
+            } catch (e) {
+                console.warn('[auto-run-from-url] unable to notify opener', e);
+            }
+
+            // Listen for ipynb JSON over postMessage
+            window.addEventListener('message', async (event) => {
+                const data = event.data || {};
+                if (!data || data.type !== 'ipynb' || !data.content) return;
+                if (typeof data.content !== 'object' || !Array.isArray(data.content.cells)) return;
+                try {
+                    await createNotebookWithCode(app, ''); // ensure file exists; we will overwrite
+                } catch (_) {}
+                try {
+                    const name = 'Untitled.ipynb';
+                    await app.serviceManager.contents.save(name, { type: 'notebook', format: 'json', content: data.content });
+                    await app.commands.execute('docmanager:open', { path: name });
+                    await runAllCells(app);
+                } catch (err) {
+                    console.error('[auto-run-from-url] postMessage ipynb save/open failed:', err);
+                }
+            });
+
+            // URL fallback (Method B): code/code_b64 parameters
+            const code = await getCodeFromUrlParams();
+            if (code) {
+                console.log('[auto-run-from-url] code detected from URL params');
+                const panel = await createNotebookWithCode(app, code);
+                console.log('[auto-run-from-url] notebook created');
+                await runAllCells(app);
+                window.__AUTO_RUN_FROM_URL_DONE__ = true;
+            }
         } catch (err) {
             console.error('[auto-run-from-url] initialization failed:', err);
         }

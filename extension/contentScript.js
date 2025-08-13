@@ -1,4 +1,6 @@
 (() => {
+    const JLITE_ORIGIN = 'https://philipontheroof.github.io';
+    const JLITE_URL = JLITE_ORIGIN + '/execute-python/lab/index.html';
     const BUTTON_CONTAINER_CLASS = "python-pad-controls";
     const OUTPUT_CLASS = "python-pad-output";
     const RUN_BUTTON_CLASS = "python-pad-run";
@@ -83,6 +85,76 @@
         return blocks;
     }
 
+    function buildNotebookFromCode(code) {
+        const lines = (code || '').replace(/\r\n?/g, '\n').split('\n');
+        const source = lines.length ? lines.map((l, i) => (i < lines.length - 1 ? l + '\n' : l)) : [''];
+        return {
+            cells: [
+                {
+                    cell_type: 'code',
+                    id: 'cell-1',
+                    metadata: {},
+                    source,
+                    outputs: [],
+                    execution_count: null
+                }
+            ],
+            metadata: {
+                kernelspec: { name: 'python', display_name: 'Python (Pyodide)', language: 'python' },
+                language_info: { name: 'python' }
+            },
+            nbformat: 4,
+            nbformat_minor: 5
+        };
+    }
+
+    function toBase64Unicode(text) {
+        const bytes = new TextEncoder().encode(text);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        return btoa(binary);
+    }
+
+    function openJLiteWithPostMessage(nbContent, smallCodeForFallback) {
+        const child = window.open(JLITE_URL, '_blank');
+        if (!child) {
+            if (smallCodeForFallback) {
+                const url = JLITE_URL + '?code_b64=' + encodeURIComponent(toBase64Unicode(smallCodeForFallback));
+                window.open(url, '_blank');
+            }
+            return;
+        }
+
+        let ready = false;
+        const timeoutMs = 15000;
+        function readyHandler(event) {
+            if (event.origin !== JLITE_ORIGIN) return;
+            const data = event.data || {};
+            if (data.type !== 'ready') return;
+            ready = true;
+            window.removeEventListener('message', readyHandler);
+            try {
+                child.postMessage({ type: 'ipynb', content: nbContent }, JLITE_ORIGIN);
+            } catch (e) {
+                console.error('[content] postMessage failed, fallback to URL', e);
+                if (smallCodeForFallback) {
+                    const url = JLITE_URL + '?code_b64=' + encodeURIComponent(toBase64Unicode(smallCodeForFallback));
+                    try { child.location.replace(url); } catch (_) { window.open(url, '_blank'); }
+                }
+            }
+        }
+        window.addEventListener('message', readyHandler);
+
+        setTimeout(() => {
+            if (ready) return;
+            window.removeEventListener('message', readyHandler);
+            if (smallCodeForFallback) {
+                const url = JLITE_URL + '?code_b64=' + encodeURIComponent(toBase64Unicode(smallCodeForFallback));
+                try { child.location.replace(url); } catch (_) { window.open(url, '_blank'); }
+            }
+        }, timeoutMs);
+    }
+
     function ensureControlsForBlock(codeEl) {
         if (!(codeEl instanceof HTMLElement)) return;
         const parent = codeEl.closest('pre') || codeEl.parentElement || codeEl;
@@ -127,15 +199,8 @@
 
         nbBtn.addEventListener('click', () => {
             const code = getCode();
-            // Robust UTF-8 base64 encoding
-            const bytes = new TextEncoder().encode(code);
-            let binary = '';
-            for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-            const b64 = btoa(binary);
-            const enc = encodeURIComponent(b64);
-            // Open hosted JupyterLite using code_b64 query parameter (unified repo /docs)
-            const url = 'https://philipontheroof.github.io/execute-python/lab/index.html?code_b64=' + enc;
-            window.open(url, '_blank');
+            const nb = buildNotebookFromCode(code || '');
+            openJLiteWithPostMessage(nb, code || '');
         });
 
         container.appendChild(runBtn);
