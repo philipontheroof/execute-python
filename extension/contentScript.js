@@ -134,7 +134,7 @@
             const b64 = btoa(binary);
             const enc = encodeURIComponent(b64);
             // Open hosted JupyterLite using code_b64 query parameter (unified repo /docs)
-            const url = 'https://philipontheroof.github.io/python-pad/lab/index.html?code_b64=' + enc;
+            const url = 'https://philipontheroof.github.io/execute-python/lab/index.html?code_b64=' + enc;
             window.open(url, '_blank');
         });
 
