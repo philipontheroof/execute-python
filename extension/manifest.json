@@ -1,0 +1,57 @@
+{
+    "manifest_version": 3,
+    "name": "Python Pad Runner",
+    "version": "0.1.0",
+    "description": "Detects Python code blocks on webpages, adds Run and Notebook buttons, and runs code entirely in-browser via Pyodide.",
+    "permissions": [
+        "scripting",
+        "activeTab",
+        "tabs"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "contentScript.js"
+            ],
+            "css": [
+                "styles.css"
+            ],
+            "run_at": "document_idle"
+        }
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "action": {
+        "default_title": "Python Pad Runner"
+    },
+    "sandbox": {
+        "pages": [
+            "runner.html"
+        ]
+    },
+    "content_security_policy": {
+        "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'",
+        "sandbox": "sandbox allow-scripts; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src 'self'"
+    },
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "runner.html",
+                "runner.js",
+                "pyWorker.js",
+                "pyodide/**",
+                "styles.css"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ]
+}

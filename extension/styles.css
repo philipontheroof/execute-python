@@ -1,0 +1,113 @@
+.python-pad-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.python-pad-controls button {
+    background: #2962ff;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.python-pad-controls button.python-pad-open-nb {
+    background: #455a64;
+}
+
+.python-pad-output {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 8px;
+    border-radius: 4px;
+    margin-top: 6px;
+    overflow: auto;
+}
+
+/* ensure any nested PREs are flattened to avoid gray inner box */
+.python-pad-output pre {
+    background: transparent !important;
+    color: inherit !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Notebook */
+.nb-root {
+    padding: 12px;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+.nb-toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.nb-run {
+    background: #2962ff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.nb-cell {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.nb-input-label {
+    color: #64748b;
+    margin-top: 8px;
+    flex: 0 0 60px;
+}
+
+.nb-input {
+    width: 100%;
+    min-height: 200px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 14px;
+}
+
+/* CodeMirror sizing to fill available width */
+.nb-cell .CodeMirror {
+    flex: 1;
+    width: 100% !important;
+    max-width: 100%;
+    min-height: 260px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+}
+
+.nb-output {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+}
+
+.nb-output-label {
+    color: #64748b;
+}
+
+.nb-output-pre {
+    flex: 1;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 10px;
+    border-radius: 6px;
+    overflow: auto;
+}

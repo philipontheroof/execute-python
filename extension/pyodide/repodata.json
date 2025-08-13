@@ -1,0 +1,14 @@
+<html>
+<head><title>404 Not Found</title></head>
+<body>
+<h1>404 Not Found</h1>
+<ul>
+<li>Code: NoSuchKey</li>
+<li>Message: The specified key does not exist.</li>
+<li>Key: v0.26.2/full/repodata.json</li>
+<li>RequestId: JH7ZXB8ZGS4AGBP4</li>
+<li>HostId: te6iz4jCCYVTpDvr7qtpR+vNty28Ygy3S1AV6lvBZxBGVeBBKEMgQHFimB/p4jhyDv4f7sIOoAE=</li>
+</ul>
+<hr/>
+</body>
+</html>
