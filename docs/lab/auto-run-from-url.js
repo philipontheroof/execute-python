@@ -211,36 +211,39 @@ or
 
     async function init() {
         try {
-            const app = await waitForJupyterApp();
-
-            // Signal readiness to opener for postMessage channel (Method A)
-            try {
-                if (window.opener && typeof window.opener.postMessage === 'function') {
-                    window.opener.postMessage({ type: 'ready' }, JLITE_ORIGIN);
-                    // Also broadcast using *; parent will filter by origin
-                    window.opener.postMessage({ type: 'ready' }, '*');
-                }
-            } catch (e) {
-                console.warn('[auto-run-from-url] unable to notify opener', e);
-            }
-
-            // Listen for ipynb JSON over postMessage
-            window.addEventListener('message', async (event) => {
+            // Install postMessage listener immediately and queue payload
+            let queuedIpynb = null;
+            window.addEventListener('message', (event) => {
                 const data = event.data || {};
                 if (!data || data.type !== 'ipynb' || !data.content) return;
                 if (typeof data.content !== 'object' || !Array.isArray(data.content.cells)) return;
-                try {
-                    await createNotebookWithCode(app, ''); // ensure file exists; we will overwrite
-                } catch (_) {}
+                queuedIpynb = data.content;
+            });
+
+            // Notify opener immediately (before app is ready) to avoid parent timeout
+            try {
+                if (window.opener && typeof window.opener.postMessage === 'function') {
+                    window.opener.postMessage({ type: 'ready' }, JLITE_ORIGIN);
+                    window.opener.postMessage({ type: 'ready' }, '*');
+                }
+            } catch (e) {
+                console.warn('[auto-run-from-url] unable to notify opener early', e);
+            }
+
+            const app = await waitForJupyterApp();
+
+            // Process queued ipynb if any
+            if (queuedIpynb) {
                 try {
                     const name = 'Untitled.ipynb';
-                    await app.serviceManager.contents.save(name, { type: 'notebook', format: 'json', content: data.content });
+                    await app.serviceManager.contents.save(name, { type: 'notebook', format: 'json', content: queuedIpynb });
                     await app.commands.execute('docmanager:open', { path: name });
                     await runAllCells(app);
+                    return;
                 } catch (err) {
-                    console.error('[auto-run-from-url] postMessage ipynb save/open failed:', err);
+                    console.error('[auto-run-from-url] queued ipynb save/open failed:', err);
                 }
-            });
+            }
 
             // URL fallback (Method B): code/code_b64 parameters
             const code = await getCodeFromUrlParams();
