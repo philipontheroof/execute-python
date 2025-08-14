@@ -1,7 +1,5 @@
 (() => {
-    const JLITE_ORIGIN = 'https://philipontheroof.github.io';
-    const JLITE_URL = JLITE_ORIGIN + '/execute-python/lab/index.html';
-    let jliteChild = null;
+    const JLITE_URL = 'https://philipontheroof.github.io/execute-python/lab/index.html';
     const BUTTON_CONTAINER_CLASS = "python-pad-controls";
     const OUTPUT_CLASS = "python-pad-output";
     const RUN_BUTTON_CLASS = "python-pad-run";
@@ -343,24 +341,15 @@
     function buildNbUrlParam(nbContent) {
         try {
             const json = JSON.stringify(nbContent);
-            console.log('[content] JSON length:', json.length);
-            const lz = LZString.compressToEncodedURIComponent(json);
-            console.log('[content] LZ compressed length:', lz.length);
-            if (!lz || lz.length === 0) {
-                console.warn('[content] LZ compression failed, falling back to base64');
-                return 'code_b64=' + encodeURIComponent(toBase64Unicode(nbContent.cells[0].source.join('')));
-            }
-            // Also provide a secondary fallback (code_b64) in the same URL so the page can recover
+            // Only send code_b64 (requested)
             const codeFallback = toBase64Unicode(nbContent.cells[0].source.join(''));
-            return 'nb_lz=' + lz + '&code_b64=' + encodeURIComponent(codeFallback);
+            return 'code_b64=' + encodeURIComponent(codeFallback);
         } catch (e) {
-            console.error('[content] buildNbUrlParam error:', e);
             // Fallback to base64 for the code content
             try {
                 const code = nbContent.cells[0].source.join('');
                 return 'code_b64=' + encodeURIComponent(toBase64Unicode(code));
             } catch (fallbackError) {
-                console.error('[content] fallback also failed:', fallbackError);
                 return null;
             }
         }
@@ -372,66 +361,6 @@
         const url = JLITE_URL + '?' + param;
         window.open(url, '_blank');
         return true;
-    }
-
-    function openJLiteWithPostMessage(nbContent, smallCodeForFallback) {
-        // Reuse existing JupyterLite tab if possible
-        if (!jliteChild || jliteChild.closed) {
-            jliteChild = window.open(JLITE_URL, '_blank');
-        }
-        if (!jliteChild) {
-            // If popup blocked, try URL path with ipynb
-            const ok = openJLiteWithUrlNb(nbContent);
-            if (!ok && smallCodeForFallback) {
-                const url = JLITE_URL + '?code_b64=' + encodeURIComponent(toBase64Unicode(smallCodeForFallback));
-                window.open(url, '_blank');
-            }
-            return;
-        }
-
-        let ready = false;
-        const timeoutMs = jliteChild && !jliteChild.closed ? 8000 : 15000; // faster timeout when reusing
-        function readyHandler(event) {
-            if (event.source !== jliteChild) return;
-            if (event.origin !== JLITE_ORIGIN) return;
-            const data = event.data || {};
-            if (data.type !== 'ready') return;
-            ready = true;
-            window.removeEventListener('message', readyHandler);
-            try {
-                jliteChild.postMessage({ type: 'ipynb', content: nbContent }, JLITE_ORIGIN);
-            } catch (e) {
-                console.error('[content] postMessage failed, fallback to URL', e);
-                const param = buildNbUrlParam(nbContent);
-                if (param) {
-                    const url = JLITE_URL + '?' + param;
-                    try { jliteChild.location.replace(url); } catch (_) { window.open(url, '_blank'); }
-                } else if (smallCodeForFallback) {
-                    const url = JLITE_URL + '?code_b64=' + encodeURIComponent(toBase64Unicode(smallCodeForFallback));
-                    try { jliteChild.location.replace(url); } catch (_) { window.open(url, '_blank'); }
-                }
-            }
-        }
-        window.addEventListener('message', readyHandler);
-
-        // If the child already installed its message listener, it will have sent 'ready' early.
-        // Also, for already-warm tabs, try sending once immediately; listener will catch if ready arrives later.
-        try {
-            jliteChild.postMessage({ type: 'ipynb', content: nbContent }, JLITE_ORIGIN);
-        } catch (_) { /* ignore, wait for ready */ }
-
-        setTimeout(() => {
-            if (ready) return;
-            window.removeEventListener('message', readyHandler);
-            const param = buildNbUrlParam(nbContent);
-            if (param) {
-                const url = JLITE_URL + '?' + param;
-                try { jliteChild.location.replace(url); } catch (_) { window.open(url, '_blank'); }
-            } else if (smallCodeForFallback) {
-                const url = JLITE_URL + '?code_b64=' + encodeURIComponent(toBase64Unicode(smallCodeForFallback));
-                try { jliteChild.location.replace(url); } catch (_) { window.open(url, '_blank'); }
-            }
-        }, timeoutMs);
     }
 
     function ensureControlsForBlock(codeEl) {

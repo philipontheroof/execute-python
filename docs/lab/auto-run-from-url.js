@@ -307,41 +307,7 @@ or
 
             const app = await waitForJupyterApp();
 
-            // Process queued ipynb if any
-            if (queuedIpynb) {
-                try {
-                    const name = 'Untitled.ipynb';
-                    await app.serviceManager.contents.save(name, { type: 'notebook', format: 'json', content: queuedIpynb });
-                    await app.commands.execute('docmanager:open', { path: name });
-                    await runAllCells(app);
-                    return;
-                } catch (err) {
-                    console.error('[auto-run-from-url] queued ipynb save/open failed:', err);
-                }
-            }
-
-            // URL notebook (nb_lz) handling
-            try {
-                const params = new URLSearchParams(window.location.search || '');
-                const nbLz = params.get('nb_lz');
-                if (nbLz) {
-                    console.log('[auto-run-from-url] nb_lz detected, length:', nbLz.length);
-                    const jsonText = LZString.decompressFromEncodedURIComponent(nbLz);
-                    if (!jsonText) {
-                        console.warn('[auto-run-from-url] nb_lz decompression failed, falling back to code_b64');
-                    } else {
-                        const nb = JSON.parse(jsonText);
-                        const name = 'Untitled.ipynb';
-                        await app.serviceManager.contents.save(name, { type: 'notebook', format: 'json', content: nb });
-                        await app.commands.execute('docmanager:open', { path: name });
-                        await runAllCells(app);
-                        return;
-                    }
-                }
-            } catch (e) {
-                console.error('[auto-run-from-url] nb_lz decode failed:', e);
-                // Continue to fallback
-            }
+            // We no longer support nb_lz or postMessage; only URL code params are handled.
 
             // URL fallback (Method B): code/code_b64 parameters
             const code = await getCodeFromUrlParams();
