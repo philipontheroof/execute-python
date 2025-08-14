@@ -62,6 +62,81 @@ or
         }
     }
 
+    // Minimal LZString decompress for URL-encoded data (nb_lz)
+    const LZString = (function () {
+        function f(n) { return String.fromCharCode(n); }
+        const keyStrUriSafe = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$';
+        const baseReverseDic = {};
+        function getBaseValue(alphabet, character) {
+            if (!baseReverseDic[alphabet]) {
+                baseReverseDic[alphabet] = {};
+                for (let i = 0; i < alphabet.length; i++) {
+                    baseReverseDic[alphabet][alphabet.charAt(i)] = i;
+                }
+            }
+            return baseReverseDic[alphabet][character];
+        }
+        function _decompress(length, resetValue, getNextValue) {
+            const dictionary = [];
+            let next, enlargeIn = 4, dictSize = 4, numBits = 3, entry = '', result = [], i, w, bits, resb, maxpower, power, c;
+            const data = { index: 0, val: 0, position: resetValue };
+            function readBits(n) {
+                bits = 0; maxpower = Math.pow(2, n); power = 1;
+                while (power != maxpower) {
+                    resb = getNextValue(data.index++);
+                    data.val = (data.val << data.position) + resb;
+                    data.position += resetValue;
+                    while (data.position >= 8) {
+                        data.position -= 8;
+                        bits |= (data.val >> data.position) & 255;
+                    }
+                    power <<= 1;
+                }
+                return bits;
+            }
+            for (i = 0; i < 3; i += 1) dictionary[i] = i;
+            bits = readBits(2);
+            switch (bits) {
+                case 0: c = f(readBits(8)); break;
+                case 1: c = f(readBits(16)); break;
+                case 2: return '';
+            }
+            dictionary[3] = c; w = c; result.push(c);
+            while (true) {
+                if (data.index > length) return '';
+                bits = readBits(numBits);
+                switch (bits) {
+                    case 0:
+                        c = f(readBits(8)); dictionary[dictSize++] = c; bits = dictSize - 1; enlargeIn--;
+                        break;
+                    case 1:
+                        c = f(readBits(16)); dictionary[dictSize++] = c; bits = dictSize - 1; enlargeIn--;
+                        break;
+                    case 2: return result.join('');
+                }
+                if (enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+                if (dictionary[bits]) {
+                    entry = dictionary[bits];
+                } else {
+                    if (bits === dictSize) entry = w + w.charAt(0); else return '';
+                }
+                result.push(entry);
+                dictionary[dictSize++] = w + entry.charAt(0);
+                enlargeIn--;
+                w = entry;
+                if (enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+            }
+        }
+        function decompressFromEncodedURIComponent(input) {
+            if (input == null) return '';
+            input = input.replace(/ /g, '+');
+            return _decompress(input.length, 32, function (index) {
+                return getBaseValue(keyStrUriSafe, input.charAt(index));
+            });
+        }
+        return { decompressFromEncodedURIComponent };
+    })();
+
     async function getCodeFromUrlParams() {
         const params = getSearchParams();
 
@@ -243,6 +318,23 @@ or
                 } catch (err) {
                     console.error('[auto-run-from-url] queued ipynb save/open failed:', err);
                 }
+            }
+
+            // URL notebook (nb_lz) handling
+            try {
+                const params = new URLSearchParams(window.location.search || '');
+                const nbLz = params.get('nb_lz');
+                if (nbLz) {
+                    const jsonText = LZString.decompressFromEncodedURIComponent(nbLz);
+                    const nb = JSON.parse(jsonText);
+                    const name = 'Untitled.ipynb';
+                    await app.serviceManager.contents.save(name, { type: 'notebook', format: 'json', content: nb });
+                    await app.commands.execute('docmanager:open', { path: name });
+                    await runAllCells(app);
+                    return;
+                }
+            } catch (e) {
+                console.error('[auto-run-from-url] nb_lz decode failed:', e);
             }
 
             // URL fallback (Method B): code/code_b64 parameters

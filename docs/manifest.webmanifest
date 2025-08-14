@@ -7,26 +7,22 @@
       "src": "./icon-120x120.png",
       "type": "image/png",
       "sizes": "120x120"
-    }, {
+    },
+    {
       "src": "./icon-512x512.png",
       "type": "image/png",
       "sizes": "512x512"
     }
   ],
-  "start_url": "./",
+  "start_url": "./lab/",
   "background_color": "#fff",
   "display": "standalone",
   "scope": "./",
-  "shortcuts" : [
+  "shortcuts": [
     {
-      "name": "JupyterLite",
-      "url": "/lab",
+      "name": "JupyterLite Lab",
+      "url": "./lab/",
       "description": "The main JupyterLite application"
-    },
-    {
-      "name": "Replite",
-      "url": "/repl?toolbar=1",
-      "description": "A single-cell interface for JupyterLite"
     }
   ]
 }
