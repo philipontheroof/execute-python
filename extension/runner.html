@@ -24,8 +24,16 @@
 </head>
 
 <body>
-    <div id="log">Loading Pyodide...</div>
+    <div id="log">Loading Pyodide... This may take up to 60 seconds on first load.</div>
     <script src="runner.js"></script>
+    <script>
+        // Add some debug logging
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'ready') {
+                document.getElementById('log').textContent = 'Pyodide loaded successfully!';
+            }
+        });
+    </script>
 </body>
 
 </html>

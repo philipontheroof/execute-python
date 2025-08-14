@@ -5,10 +5,14 @@ async function init() {
     if (!pyodideReady) {
         pyodideReady = new Promise(async (resolve, reject) => {
             try {
+                console.log('PyWorker: Loading pyodide.js...');
                 importScripts('pyodide/pyodide.js');
+                console.log('PyWorker: pyodide.js loaded, initializing Pyodide...');
                 pyodide = await loadPyodide({ indexURL: 'pyodide/' });
+                console.log('PyWorker: Pyodide initialized successfully');
                 resolve();
             } catch (e) {
+                console.error('PyWorker: Failed to initialize:', e);
                 reject(e);
             }
         });
@@ -17,17 +21,57 @@ async function init() {
 }
 
 function runAndCapture(code) {
-    pyodide.runPython('import sys\nimport io\nsys_stdout_backup = sys.stdout\nsys_stderr_backup = sys.stderr\nsys.stdout = io.StringIO()\nsys.stderr = io.StringIO()');
+    // Set up output capture
+    pyodide.runPython(`
+import sys
+import io
+import traceback
+
+# Backup original stdout/stderr
+sys_stdout_backup = sys.stdout
+sys_stderr_backup = sys.stderr
+
+# Create new string buffers
+sys.stdout = io.StringIO()
+sys.stderr = io.StringIO()
+`);
+
     let stdout = '';
     let stderr = '';
+    let success = true;
+
     try {
         pyodide.runPython(code);
+    } catch (err) {
+        console.error('PyWorker: Python execution error:', err);
+        success = false;
+        // Capture the error details
+        pyodide.runPython(`
+import traceback
+print(traceback.format_exc(), file=sys.stderr)
+`);
     } finally {
-        stdout = pyodide.runPython('sys.stdout.getvalue()');
-        stderr = pyodide.runPython('sys.stderr.getvalue()');
-        pyodide.runPython('sys.stdout = sys_stdout_backup\nsys.stderr = sys_stderr_backup');
+        // Get the captured output
+        try {
+            stdout = pyodide.runPython('sys.stdout.getvalue()');
+            stderr = pyodide.runPython('sys.stderr.getvalue()');
+        } catch (captureErr) {
+            console.error('PyWorker: Failed to capture output:', captureErr);
+            stderr = 'Failed to capture output: ' + String(captureErr);
+        }
+
+        // Restore original stdout/stderr
+        try {
+            pyodide.runPython(`
+sys.stdout = sys_stdout_backup
+sys.stderr = sys_stderr_backup
+`);
+        } catch (restoreErr) {
+            console.error('PyWorker: Failed to restore stdout/stderr:', restoreErr);
+        }
     }
-    return { stdout, stderr };
+
+    return { stdout, stderr, success };
 }
 
 self.onmessage = async (e) => {
@@ -46,9 +90,22 @@ self.onmessage = async (e) => {
         try {
             await init();
             const res = runAndCapture(data.code || '');
-            self.postMessage({ type: 'result', id, ok: true, stdout: res.stdout, stderr: res.stderr });
+            self.postMessage({
+                type: 'result',
+                id,
+                ok: res.success,
+                stdout: res.stdout,
+                stderr: res.stderr
+            });
         } catch (err) {
-            self.postMessage({ type: 'result', id, ok: false, stdout: '', stderr: String(err && err.message ? err.message : err) });
+            console.error('PyWorker: Failed to run code:', err);
+            self.postMessage({
+                type: 'result',
+                id,
+                ok: false,
+                stdout: '',
+                stderr: String(err && err.message ? err.message : err)
+            });
         }
         return;
     }

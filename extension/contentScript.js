@@ -18,6 +18,8 @@
                     resolve(CONFIG);
                 });
             } catch (_) {
+                // Fallback to defaults if chrome storage fails
+                CONFIG = { ...DEFAULTS };
                 resolve(CONFIG);
             }
         });
@@ -45,18 +47,27 @@
         if (runnerFrame && document.documentElement.contains(runnerFrame)) return runnerFrame;
         const iframe = document.createElement('iframe');
         iframe.style.display = 'none';
-        iframe.sandbox = 'allow-scripts allow-popups allow-same-origin';
         iframe.src = chrome.runtime.getURL('runner.html');
         const parentNode = document.body || document.documentElement;
         parentNode.appendChild(iframe);
         runnerFrame = iframe;
         if (!runnerReadyPromise) {
-            runnerReadyPromise = new Promise((resolve) => {
+            runnerReadyPromise = new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    window.removeEventListener('message', onMessage);
+                    reject(new Error('Runner iframe failed to initialize within 60 seconds. This may be due to slow Pyodide loading.'));
+                }, 60000);
+
                 function onMessage(ev) {
                     const data = ev.data || {};
                     if (ev.source === iframe.contentWindow && data.type === 'ready') {
+                        clearTimeout(timeout);
                         window.removeEventListener('message', onMessage);
-                        resolve();
+                        if (data.error) {
+                            reject(new Error('Runner failed to initialize: ' + data.error));
+                        } else {
+                            resolve();
+                        }
                     }
                 }
                 window.addEventListener('message', onMessage);
@@ -68,11 +79,17 @@
     async function runInPyodide(code) {
         const iframe = ensureRunnerFrame();
         await runnerReadyPromise;
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const id = Math.random().toString(36).slice(2);
+            const timeout = setTimeout(() => {
+                window.removeEventListener('message', onMessage);
+                reject(new Error('Code execution timed out after 30 seconds'));
+            }, 30000);
+
             function onMessage(ev) {
                 const data = ev.data || {};
                 if (ev.source === iframe.contentWindow && data.type === 'result' && data.id === id) {
+                    clearTimeout(timeout);
                     window.removeEventListener('message', onMessage);
                     resolve(data);
                 }
@@ -406,56 +423,74 @@
         const container = document.createElement('div');
         container.className = BUTTON_CONTAINER_CLASS;
 
-        const runBtn = document.createElement('button');
-        runBtn.className = RUN_BUTTON_CLASS;
-        runBtn.textContent = 'Run Python';
-
-        const nbBtn = document.createElement('button');
-        nbBtn.className = NB_BUTTON_CLASS;
-        nbBtn.textContent = 'Open Notebook';
-
         const output = document.createElement('div');
         output.className = OUTPUT_CLASS;
         output.style.display = 'none';
 
         const getCode = () => (codeEl.innerText || codeEl.textContent || "");
 
-        runBtn.addEventListener('click', async () => {
-            const code = getCode();
-            output.style.display = '';
-            output.textContent = 'Running...';
-            try {
-                const result = await runInPyodide(code);
-                const stdout = result.stdout || '';
-                const stderr = result.stderr || '';
-                let text = '';
-                if (stdout) text += stdout;
-                if (stderr) text += (text ? '\n' : '') + '[stderr]\n' + stderr;
-                output.textContent = text || 'Done.';
-            } catch (err) {
-                output.textContent = 'Error running code: ' + (err && err.message ? err.message : String(err));
-            }
-        });
+        // Only add Run button if enabled in config
+        if (CONFIG.showRun) {
+            const runBtn = document.createElement('button');
+            runBtn.className = RUN_BUTTON_CLASS;
+            runBtn.textContent = 'Run Python';
 
-        nbBtn.addEventListener('click', () => {
-            const code = getCode();
-            const nb = buildNotebookFromCode(code || '');
-            // Prefer URL delivery for small notebooks; if too big, use postMessage
-            const param = buildNbUrlParam(nb);
-            const url = param ? (CONFIG.jliteUrl + '?' + param) : null;
-            const maxLen = CONFIG.maxUrlLen || 1800;
-            if (url && url.length <= maxLen) {
-                window.open(url, '_blank');
-            } else {
-                alert('Code is too long to open via URL on this site. Please shorten the code.');
-            }
-        });
+            runBtn.addEventListener('click', async () => {
+                const code = getCode();
+                output.style.display = '';
+                output.textContent = 'Initializing Python environment... (this may take up to 60 seconds on first run)';
+                try {
+                    const result = await runInPyodide(code);
+                    const stdout = result.stdout || '';
+                    const stderr = result.stderr || '';
 
-        container.appendChild(runBtn);
-        container.appendChild(nbBtn);
-        // Insert controls immediately after the code block, then output below controls
-        parent.insertAdjacentElement('afterend', container);
-        container.insertAdjacentElement('afterend', output);
+                    // Build output text
+                    let text = '';
+                    if (stdout) text += stdout;
+                    if (stderr) {
+                        if (text) text += '\n';
+                        text += stderr;
+                    }
+
+                    // Show output or indicate completion
+                    output.textContent = text || 'Code executed successfully (no output)';
+                } catch (err) {
+                    output.textContent = 'Error running code: ' + (err && err.message ? err.message : String(err));
+                }
+            });
+
+            container.appendChild(runBtn);
+        }
+
+        // Only add Notebook button if enabled in config
+        if (CONFIG.showNotebook) {
+            const nbBtn = document.createElement('button');
+            nbBtn.className = NB_BUTTON_CLASS;
+            nbBtn.textContent = 'Open Notebook';
+
+            nbBtn.addEventListener('click', () => {
+                const code = getCode();
+                const nb = buildNotebookFromCode(code || '');
+                // Prefer URL delivery for small notebooks; if too big, use postMessage
+                const param = buildNbUrlParam(nb);
+                const url = param ? (CONFIG.jliteUrl + '?' + param) : null;
+                const maxLen = CONFIG.maxUrlLen || 1800;
+                if (url && url.length <= maxLen) {
+                    window.open(url, '_blank');
+                } else {
+                    alert('Code is too long to open via URL on this site. Please shorten the code.');
+                }
+            });
+
+            container.appendChild(nbBtn);
+        }
+
+        // Only add controls if at least one button was created
+        if (container.children.length > 0) {
+            // Insert controls immediately after the code block, then output below controls
+            parent.insertAdjacentElement('afterend', container);
+            container.insertAdjacentElement('afterend', output);
+        }
 
         processedBlocks.add(parent);
         if (parent.dataset) parent.dataset.pythonPadProcessed = '1';

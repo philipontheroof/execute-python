@@ -49,14 +49,8 @@
         "page": "options.html",
         "open_in_tab": true
     },
-    "sandbox": {
-        "pages": [
-            "runner.html"
-        ]
-    },
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'",
-        "sandbox": "sandbox allow-scripts; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src 'self'"
+        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; style-src 'self' 'unsafe-inline'"
     },
     "web_accessible_resources": [
         {

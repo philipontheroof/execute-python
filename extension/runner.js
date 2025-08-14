@@ -58,9 +58,13 @@ window.addEventListener('message', async (event) => {
 
 // Announce ready after worker initialized
 (async () => {
-    ensureWorker();
-    await workerReady;
-    window.parent.postMessage({ type: 'ready' }, '*');
+    try {
+        ensureWorker();
+        await workerReady;
+        window.parent.postMessage({ type: 'ready' }, '*');
+    } catch (err) {
+        window.parent.postMessage({ type: 'ready', error: String(err && err.message ? err.message : err) }, '*');
+    }
 })();
 
 
