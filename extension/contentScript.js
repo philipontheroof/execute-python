@@ -350,7 +350,9 @@
                 console.warn('[content] LZ compression failed, falling back to base64');
                 return 'code_b64=' + encodeURIComponent(toBase64Unicode(nbContent.cells[0].source.join('')));
             }
-            return 'nb_lz=' + lz;
+            // Also provide a secondary fallback (code_b64) in the same URL so the page can recover
+            const codeFallback = toBase64Unicode(nbContent.cells[0].source.join(''));
+            return 'nb_lz=' + lz + '&code_b64=' + encodeURIComponent(codeFallback);
         } catch (e) {
             console.error('[content] buildNbUrlParam error:', e);
             // Fallback to base64 for the code content
