@@ -4,19 +4,8 @@
     margin-top: 4px;
 }
 
-.python-pad-controls button {
-    background: #2962ff;
-    color: white;
-    border: none;
-    padding: 6px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.python-pad-controls button.python-pad-open-nb {
-    background: #455a64;
-}
+.python-pad-controls button { background: #2962ff; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.python-pad-controls button.python-pad-open-nb { background: #fd3; color: #000; }
 
 .python-pad-output {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

@@ -1,5 +1,37 @@
 (() => {
-    const JLITE_URL = 'https://philipontheroof.github.io/execute-python/lab/index.html';
+    const DEFAULTS = {
+        enabled: true,
+        jliteUrl: 'https://philipontheroof.github.io/execute-python/lab/index.html',
+        maxUrlLen: 1800,
+        showRun: true,
+        showNotebook: true,
+        siteMode: 'all', // all | whitelist | blacklist
+        whitelist: [],
+        blacklist: []
+    };
+    let CONFIG = { ...DEFAULTS };
+    function loadConfig() {
+        return new Promise((resolve) => {
+            try {
+                chrome.storage.sync.get(DEFAULTS, (cfg) => {
+                    CONFIG = { ...DEFAULTS, ...cfg };
+                    resolve(CONFIG);
+                });
+            } catch (_) {
+                resolve(CONFIG);
+            }
+        });
+    }
+    function hostAllowed() {
+        const host = location.hostname || '';
+        if (CONFIG.siteMode === 'whitelist') {
+            return CONFIG.whitelist.includes(host);
+        }
+        if (CONFIG.siteMode === 'blacklist') {
+            return !CONFIG.blacklist.includes(host);
+        }
+        return true; // all
+    }
     const BUTTON_CONTAINER_CLASS = "python-pad-controls";
     const OUTPUT_CLASS = "python-pad-output";
     const RUN_BUTTON_CLASS = "python-pad-run";
@@ -358,7 +390,7 @@
     function openJLiteWithUrlNb(nbContent) {
         const param = buildNbUrlParam(nbContent);
         if (!param) return false;
-        const url = JLITE_URL + '?' + param;
+        const url = CONFIG.jliteUrl + '?' + param;
         window.open(url, '_blank');
         return true;
     }
@@ -410,11 +442,12 @@
             const nb = buildNotebookFromCode(code || '');
             // Prefer URL delivery for small notebooks; if too big, use postMessage
             const param = buildNbUrlParam(nb);
-            const url = param ? (JLITE_URL + '?' + param) : null;
-            if (url && url.length <= 1800) {
+            const url = param ? (CONFIG.jliteUrl + '?' + param) : null;
+            const maxLen = CONFIG.maxUrlLen || 1800;
+            if (url && url.length <= maxLen) {
                 window.open(url, '_blank');
             } else {
-                openJLiteWithPostMessage(nb, code || '');
+                alert('Code is too long to open via URL on this site. Please shorten the code.');
             }
         });
 
@@ -442,12 +475,11 @@
         }, 400);
     }
 
-    function init() {
+    async function init() {
+        await loadConfig();
+        if (!CONFIG.enabled || !hostAllowed()) return;
         scanAndEnhance();
-        // Remote JupyterLite handles code_b64; no client-side DOM automation needed here
-        const observer = new MutationObserver(() => {
-            scheduleRescan();
-        });
+        const observer = new MutationObserver(() => { scheduleRescan(); });
         observer.observe(document.documentElement, { childList: true, subtree: true });
     }
 

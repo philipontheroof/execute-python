@@ -4,6 +4,7 @@
     "version": "0.1.0",
     "description": "Detects Python code blocks on webpages, adds Run and Notebook buttons, and runs code entirely in-browser via Pyodide.",
     "permissions": [
+        "storage",
         "scripting",
         "activeTab",
         "tabs"
@@ -30,6 +31,10 @@
     },
     "action": {
         "default_title": "Python Pad Runner"
+    },
+    "options_ui": {
+        "page": "options.html",
+        "open_in_tab": true
     },
     "sandbox": {
         "pages": [

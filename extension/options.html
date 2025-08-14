@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Python Pad Runner — Options</title>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; padding: 16px; }
+      fieldset { border: 1px solid #ddd; padding: 12px; margin-bottom: 16px; }
+      legend { font-weight: 600; }
+      label { display: block; margin: 8px 0; }
+      input[type="text"], textarea, select { width: 100%; box-sizing: border-box; }
+      .row { display: flex; gap: 12px; }
+      .row > div { flex: 1; }
+      .actions { margin-top: 16px; }
+    </style>
+  </head>
+  <body>
+    <h1>Python Pad Runner — Options</h1>
+
+    <fieldset>
+      <legend>General</legend>
+      <label>
+        <input id="enabled" type="checkbox">
+        Enable on webpages
+      </label>
+      <label>
+        JupyterLite URL
+        <input id="jliteUrl" type="text" placeholder="https://philipontheroof.github.io/execute-python/lab/index.html">
+      </label>
+      <label>
+        Max URL length for Open Notebook (code_b64)
+        <input id="maxUrlLen" type="number" min="256" step="1" placeholder="1800">
+      </label>
+      <label>
+        Buttons
+        <div>
+          <input id="showRun" type="checkbox"> Show "Run Python"
+        </div>
+        <div>
+          <input id="showNotebook" type="checkbox"> Show "Open Notebook"
+        </div>
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Site Scope</legend>
+      <label>
+        Mode
+        <select id="siteMode">
+          <option value="all">All sites</option>
+          <option value="whitelist">Whitelist only</option>
+          <option value="blacklist">Blacklist except</option>
+        </select>
+      </label>
+      <div class="row">
+        <div>
+          <label>
+            Whitelist (one host per line)
+            <textarea id="whitelist" rows="6" placeholder="example.com\nsub.domain.com"></textarea>
+          </label>
+        </div>
+        <div>
+          <label>
+            Blacklist (one host per line)
+            <textarea id="blacklist" rows="6" placeholder="example.com\nsub.domain.com"></textarea>
+          </label>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button id="save">Save</button>
+      <span id="status" style="margin-left:8px;color:#0a0;display:none;">Saved.</span>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>
+
+
