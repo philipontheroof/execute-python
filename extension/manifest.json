@@ -1,6 +1,7 @@
 {
     "manifest_version": 3,
-    "name": "Python Pad Runner",
+    "name": "execute python",
+    "short_name": "execute python",
     "version": "0.1.0",
     "description": "Detects Python code blocks on webpages, adds Run and Notebook buttons, and runs code entirely in-browser via Pyodide.",
     "permissions": [
@@ -30,7 +31,7 @@
         "service_worker": "background.js"
     },
     "action": {
-        "default_title": "Python Pad Runner"
+        "default_title": "execute python"
     },
     "options_ui": {
         "page": "options.html",
