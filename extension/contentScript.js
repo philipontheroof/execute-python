@@ -343,10 +343,24 @@
     function buildNbUrlParam(nbContent) {
         try {
             const json = JSON.stringify(nbContent);
+            console.log('[content] JSON length:', json.length);
             const lz = LZString.compressToEncodedURIComponent(json);
+            console.log('[content] LZ compressed length:', lz.length);
+            if (!lz || lz.length === 0) {
+                console.warn('[content] LZ compression failed, falling back to base64');
+                return 'code_b64=' + encodeURIComponent(toBase64Unicode(nbContent.cells[0].source.join('')));
+            }
             return 'nb_lz=' + lz;
         } catch (e) {
-            return null;
+            console.error('[content] buildNbUrlParam error:', e);
+            // Fallback to base64 for the code content
+            try {
+                const code = nbContent.cells[0].source.join('');
+                return 'code_b64=' + encodeURIComponent(toBase64Unicode(code));
+            } catch (fallbackError) {
+                console.error('[content] fallback also failed:', fallbackError);
+                return null;
+            }
         }
     }
 

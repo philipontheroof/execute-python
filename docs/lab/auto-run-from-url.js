@@ -325,16 +325,22 @@ or
                 const params = new URLSearchParams(window.location.search || '');
                 const nbLz = params.get('nb_lz');
                 if (nbLz) {
+                    console.log('[auto-run-from-url] nb_lz detected, length:', nbLz.length);
                     const jsonText = LZString.decompressFromEncodedURIComponent(nbLz);
-                    const nb = JSON.parse(jsonText);
-                    const name = 'Untitled.ipynb';
-                    await app.serviceManager.contents.save(name, { type: 'notebook', format: 'json', content: nb });
-                    await app.commands.execute('docmanager:open', { path: name });
-                    await runAllCells(app);
-                    return;
+                    if (!jsonText) {
+                        console.warn('[auto-run-from-url] nb_lz decompression failed, falling back to code_b64');
+                    } else {
+                        const nb = JSON.parse(jsonText);
+                        const name = 'Untitled.ipynb';
+                        await app.serviceManager.contents.save(name, { type: 'notebook', format: 'json', content: nb });
+                        await app.commands.execute('docmanager:open', { path: name });
+                        await runAllCells(app);
+                        return;
+                    }
                 }
             } catch (e) {
                 console.error('[auto-run-from-url] nb_lz decode failed:', e);
+                // Continue to fallback
             }
 
             // URL fallback (Method B): code/code_b64 parameters
