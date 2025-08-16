@@ -4,6 +4,7 @@
     "short_name": "execute python",
     "version": "0.1.0",
     "description": "Detects Python code blocks on webpages, adds Run and Notebook buttons, and runs code entirely in-browser via Pyodide.",
+    "homepage_url": "https://philipontheroof.github.io/execute-python/privacy-policy.html",
     "icons": {
         "16": "icons/16x16.png",
         "32": "icons/32x32.png",
